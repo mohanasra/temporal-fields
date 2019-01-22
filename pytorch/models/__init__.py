@@ -26,8 +26,9 @@ def create_model(args):
         model = importlib.import_module('.' + args.arch, package='models').model
         if not args.pretrained_weights == '':
             print('loading pretrained-weights from {}'.format(args.pretrained_weights))
-            model.load_state_dict(torch.load(args.pretrained_weights))
+            model.load_state_dict(torch.load(args.pretrained_weights), strict=False)
 
+    print(model)
     # replace last layer
     if hasattr(model, 'classifier'):
         newcls = list(model.classifier.children())
@@ -41,6 +42,10 @@ def create_model(args):
         newcls = list(model.children())[:-1]
         newcls = newcls[:-1] + [AsyncTFBase(newcls[-1].in_features, args.nclass, args.nhidden).cuda()]
         model = nn.Sequential(*newcls)
+        
+    if not args.pretrained_weights == '':
+        print('loading pretrained-weights from {}'.format(args.pretrained_weights))
+        model.load_state_dict(torch.load(args.pretrained_weights), strict=False)
 
     if args.distributed:
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,

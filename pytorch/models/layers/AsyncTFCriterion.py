@@ -154,6 +154,7 @@ class AsyncTFCriterion(nn.Module, MessagePassing):
         self.winsmooth = args.window_smooth
 
     def forward(self, a, aa, target, id_time, n=1, synchronous=False):
+        print("AsyncTFCriterion.forward: target - {}".format(target))
         if target.dim() == 1:
             print('converting Nx1 target to NxC')
             target = Variable(gtmat(a.shape, target.data.long()))

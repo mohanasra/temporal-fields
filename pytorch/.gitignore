@@ -1,4 +1,9 @@
 gen/
 checkpoints/
+cache/
 *.pyc
 *.swp
+*.pydevproject
+*.project
+
+

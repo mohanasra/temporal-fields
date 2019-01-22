@@ -56,12 +56,23 @@ def accuracy(output, target, topk=(1,)):
 
 def submission_file(ids, outputs, filename):
     """ write list of ids and outputs to filename"""
+    print("submission_file: filename - {}; ids - {}; outputs length - {}".format(filename, ids, len(outputs)))
     with open(filename, 'w') as f:
         for vid, output in zip(ids, outputs):
+            print("Output length - {}".format(len(output)))
             scores = ['{:g}'.format(x)
                       for x in output]
             f.write('{} {}\n'.format(vid, ' '.join(scores)))
 
+def submission_file_localize(ids, outputs, filename):
+    """ write list of ids and outputs to filename"""
+    print("submission_file_localize: filename - {}; ids - {}; outputs length - {}".format(filename, ids, len(outputs)))
+    with open(filename, 'w') as f:
+        for vid, output_localize in zip(ids, outputs):
+            print("Output localize length - {}".format(len(output_localize)))
+            for i, output in enumerate(output_localize):
+                scores = ['{:g}'.format(x) for x in output]
+                f.write('{} {} {}\n'.format(vid, i, ' '.join(scores)))
 
 class Trainer():
     def train(self, loader, model, criterion, optimizer, epoch, args):
@@ -164,6 +175,7 @@ class Trainer():
         with torch.no_grad():
             batch_time = AverageMeter()
             outputs = []
+            outputs_localize = []
             gts = []
             ids = []
 
@@ -179,17 +191,23 @@ class Trainer():
                 assert target[0,:].eq(target[1,:]).all(), "val_video not synced"
                 input_var = torch.autograd.Variable(input.cuda(), volatile=True)
                 target_var = torch.autograd.Variable(target, volatile=True)
+#                 print("input var - {}".format(input_var))
+                print("input size - {}".format(input_var.size()))
                 output = model(input_var)
+#                 print("output - {}".format(output))
+                print("output shape - {}".format(len(output)))
                 output, loss = criterion(*(output + (target_var, meta)), synchronous=True)
 
                 # store predictions
                 #output_video = output.mean(dim=0)
                 output_video = output.max(dim=0)[0]
                 outputs.append(output_video.data.cpu().numpy())
+                outputs_localize.append(output.data.cpu().numpy())
                 gts.append(target[0,:])
                 ids.append(meta['id'][0])
                 batch_time.update(time.time() - end)
                 end = time.time()
+                print("epoch - {}, i - {}, output len - {}".format(epoch, i, len(output[0])))
 
                 if i % args.print_freq == 0:
                     print('Test2: [{0}/{1}]\t'
@@ -201,6 +219,10 @@ class Trainer():
             print(ap)
             print(' * mAP {:.3f}'.format(mAP))
             print(' * prec1 {:.3f} * prec5 {:.3f}'.format(prec1[0], prec5[0]))
+            print('Creating epoch file...')
             submission_file(
                 ids, outputs, '{}/epoch_{:03d}.txt'.format(args.cache, epoch+1))
+            print('Creating localize file...')
+            submission_file_localize(
+                ids, outputs_localize, '{}/localize_{:03d}.txt'.format(args.cache, epoch+1))
             return mAP, prec1[0], prec5[0]
